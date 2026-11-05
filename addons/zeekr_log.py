@@ -508,10 +508,23 @@ def _inject_update(txt: str, pkg: str, sha: str, md5: str, size_bytes):
     except Exception:
         return txt, False, []
     data = doc.get("data") or {}
-    lst = data.get("list")
-    if isinstance(data, dict) and data.get("apkPackageName"):
-        # 详情页接口：data 本身就是单个应用
-        lst = [data]
+    lst = None
+    if isinstance(data, list):
+        # 有的接口 data 本身就是应用数组（appList 直接返回 list）
+        lst = data
+    elif isinstance(data, dict):
+        if data.get("apkPackageName"):
+            # 详情页接口：data 本身就是单个应用
+            lst = [data]
+        else:
+            lst = data.get("list")
+            # 再兜底一层：list 也可能嵌套在 data.data / data.appList 等字段里
+            if not isinstance(lst, list):
+                for key in ("appList", "applist", "records", "items", "apps", "data"):
+                    v = data.get(key)
+                    if isinstance(v, list):
+                        lst = v
+                        break
     if not isinstance(lst, list):
         return txt, False, []
     target_all = pkg in ("*", "ALL", "all")

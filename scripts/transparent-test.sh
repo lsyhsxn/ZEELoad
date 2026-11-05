@@ -131,7 +131,7 @@ detect_lease() {
     /hw_address=/ { sub(/.*hw_address=/, ""); hw=$0 }
     /^\}/ {
       if (ip ~ ("^" prefix)) {
-        wanted = (name ~ /(auto|ivt|evb|zeekr|lynk|ecarx|dhu|headunit|hu)/)
+        wanted = (name ~ /(auto|ivt|evb|zeekr|lynk|ecarx|dhu|headunit|hu|sa8155|sa8155p|sa515m|qcm|sm6350|sm8150|android)/)
         if (mode == "ip" && wanted) print ip
         if (mode == "ip") count++
         if (mode == "name" && wanted) print name
