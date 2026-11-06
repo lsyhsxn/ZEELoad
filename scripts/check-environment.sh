@@ -40,7 +40,7 @@ detect_lease() {
     /hw_address=/ { sub(/.*hw_address=/, ""); hw=$0 }
     /^\}/ {
       if (ip ~ ("^" prefix)) {
-        wanted = (name ~ /(auto|ivt|evb|zeekr|lynk|ecarx|dhu|headunit|hu)/)
+        wanted = (name ~ /(auto|ivt|evb|zeekr|lynk|ecarx|dhu|headunit|hu|sa8155|sa8155p|sa515m|qcm|sm6350|sm8150|android)/)
         if (mode == "ip" && wanted) print ip
         if (mode == "mac" && wanted) { n=split(hw, p, ","); s=p[n]; m=split(s, o, ":");
           if (m >= 6) printf "%s:%s:%s:%s:%s:%s\n", o[m-5], o[m-4], o[m-3], o[m-2], o[m-1], o[m] }
@@ -96,7 +96,7 @@ else
   bad "ARP 中没有 $CAR_IP -> ${CAR_MAC}（车机 IP 可能变化）"
   arp -an | grep '192\.168\.2\.' | sed 's/^/  /'
 fi
-ping -c 1 -t 2 "$CAR_IP" >/dev/null 2>&1 && ok "ping $CAR_IP 通" || bad "ping $CAR_IP 失败"
+ping -c 1 -t 2 "$CAR_IP" >/dev/null 2>&1 && ok "ping $CAR_IP 通" || say "  （ping 无响应属正常：车机通常屏蔽 ICMP，ARP 能解析到即已连接）"
 
 say ""
 say "== 目标域名解析（Mac 侧，车机使用 $IFACE 上的地址作为 DNS）=="

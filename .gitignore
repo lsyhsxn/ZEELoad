@@ -42,3 +42,15 @@ windows/build/
 windows/dist-*/
 windows/build-*/
 *.spec
+
+# ---- 改包名工具链的本地大文件（脚本 tools/repack-sign.sh 入库，二进制依赖按需自备）----
+tools/jdk-*/
+tools/jdk*.tar.gz
+tools/apktool.jar
+tools/build-tools*.zip
+tools/bt*_extract/
+tools/kuwo_decoded/
+tools/*.apk
+tools/*.idsig
+tools/sign.jks
+tools/_repack_work/

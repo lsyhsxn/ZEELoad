@@ -1,13 +1,26 @@
 # 极载 · ZEEload
 
+> # 🛑 Research Preview · 请勿公开分发
+>
+> ### **仅限口口相传，请勿发帖、请勿宣传。**
+>
+> **请不要**把本项目发到微博、小红书、知乎、B 站、抖音、X（推特）、V2EX、贴吧、微信群、Telegram 群、公众号、短视频或任何论坛；
+> 也**不要**提交到导航站、聚合站、Awesome 列表或开源推荐号。
+>
+> **原因**：本项目是**学术研究与技术探讨**性质的课题，用于观察车机应用商店的更新机制与证书信任链设计，面向的是小范围的交流与复现。
+> 公开传播容易被断章取义、被当成「破解工具」转发，既偏离研究初衷，也容易带来不必要的误解与风险。
+>
+> 想交流的话，**私下告诉有研究兴趣的朋友就好**，并提醒对方不要外传。
+
 ![ZEEload](assets/banner.png)
 
 在没有 root、没有 adb、车机不允许安装未知来源应用的情况下，**把任意 APK 装进极氪车机**。
 
 原理是让车机自己的应用商店把它当成一次「应用更新」安装下去：透明解密商店流量 → 注入一条假更新 → 把下载内容换掉。全程不修改车机系统、不往车机装证书，退出即恢复。
 
-> 当前版本：**v1.0.1**（2026-10-31）· macOS 版已在极氪 7X 实测成功（DiPlay、ES 文件浏览器、MT管理器）；**Windows 版也已实测可用**
+> 当前版本：**v1.0.2**（2026-11-03）· macOS 版已在极氪 7X 实测成功（DiPlay、ES 文件浏览器、MT管理器）；**Windows 版也已实测可用**
 > 技术原理与安全分析见 [docs/技术路径-车机APK侧载.md](docs/技术路径-车机APK侧载.md)
+> 本项目是 **AI 辅助编程项目**：需求、方案与实测由作者主导，代码与文档在 AI 协助下完成，可能存在未知缺陷，请自行审阅与评估。
 
 ---
 
@@ -19,6 +32,8 @@
 - [原理](#原理)
 - [两个漏洞的组合](#两个漏洞的组合)
 - [快速开始（macOS）](#快速开始macos)
+- [图形界面（GUI）](#图形界面gui)
+- [改包名工具（研究用）](#改包名工具研究用)
 - [Windows](#windows)
 - [结果判读](#结果判读)
 - [常见问题](#常见问题)
@@ -29,7 +44,7 @@
 
 ## 下载（发布包）
 
-到 [Releases](https://github.com/zhujinle/ZEELoad/releases) 下载对应平台的压缩包：
+到 [Releases](https://github.com/mamage123/ZEELoad/releases) 下载对应平台的压缩包：
 
 | 平台 | 发布包 | 解压后 |
 |---|---|---|
@@ -181,6 +196,33 @@ bash scripts/check-environment.sh
 
 可用环境变量覆盖自动探测：`ZEEKR_IFACE`、`ZEEKR_CAR_IP`、`ZEEKR_CAR_MAC`、`ZEEKR_VENV`、`ZEEKR_DOMAINS`、`ZEEKR_HOSTS`。
 
+## 图形界面（GUI）
+
+macOS 另提供一个 Tkinter 图形界面 `gui/zeeload_gui.py`，把侧载流程做成了可视化操作：
+
+```bash
+./venv/bin/python gui/zeeload_gui.py
+```
+
+界面包含：四阶段进度指示（启动监听 → 拦截请求 → 注入更新 → 替换下发）、APK 拖入解析、拦截范围（仅极氪域名 / 全部 443）、注入目标（默认 `ALL`）、高级选项（域名 / 后缀 / 环境变量覆盖）等。
+
+解析 APK 时会调用 build-tools 自带的 `aapt dump badging` 读出**权威包名、应用名、原生架构**（不再是启发式猜测）。
+
+> GUI 依赖 Tkinter（macOS 系统 Python 自带）。如果用的 venv 没有 tkinter，退回 `一键侧载安装.command` 命令行入口即可。
+
+## 改包名工具（研究用）
+
+`tools/repack-sign.sh` 用于把任意 APK 的包名改成极氪应用市场上架的包名、并重新签名（v1+v2+v3），是研究「仅支持上架应用」白名单边界时用到的辅助脚本：
+
+```bash
+./tools/repack-sign.sh <原始APK> <新包名> [输出文件名]
+# 例：./tools/repack-sign.sh 酷我.apk com.netease.cloudmusic.iot 伪装包.apk
+```
+
+脚本依赖 `apktool.jar`、免安装 JDK17（含 `apksigner`/`zipalign`）、`sign.jks` 签名密钥，这些二进制均不入库，需自行放到 `tools/` 下（脚本内有说明）。
+
+> ⚠️ **重要结论**：改包名**不能**绕过「仅支持上架应用」这道校验。白名单校验的是「包名 + 服务端 `sign` 授权」的完整链路——非上架应用既不在包名白名单里，也拿不到服务端签名（`sign:null`），改包名只会撞上「签名证书不一致」或「全新安装需 sign」这两堵墙。详见[已知限制](#已知限制)。
+
 ## Windows
 
 `windows/` 是自包含版本，用 **WinDivert** 代替 pf，用本地 **SNI 分流器**把流量喂给 mitmproxy（Windows 没有 pf，mitmproxy 透明模式不可用）。
@@ -245,11 +287,12 @@ python win_sideload.py --apk "C:\path\app.apk"
 
 ## 让 AI 帮你配置
 
-把项目地址 **https://github.com/zhujinle/ZEELoad** 直接交给 AI，让它自己完成环境配置并把工具跑起来。
+把项目地址 **https://github.com/mamage123/ZEELoad** 直接交给 AI，让它自己完成环境配置并把工具跑起来。
 
 ## 已知限制
 
 - **只能装新包**，不能替换已安装应用；
+- **「仅支持上架应用」白名单无法通过改包名绕过**：商店放行的前提是「包名在上架名单 + 服务端签发有效 `sign`」。非上架应用（如酷我音乐 `cn.kuwo.player`）既不在名单里、也拿不到官方哈希对应的 `sign`（服务端恒返回 `null`）；改包名成上架包名后，要么因「签名证书不一致」被拒（该包名已安装），要么退回「全新安装」路径仍需有效 `sign`。这是机制性边界，非参数问题；
 - **仅 IPv4 透明转发**（CDN 有 AAAA，macOS 版会用 `block return` 把目标域名的 IPv6 挡掉、逼回 IPv4；Windows 版依赖 ICS 不给客户端 IPv6）；
 - 全量解密（`--intercept-all`）可能让个别做了证书固定的车机应用暂时异常，退出脚本即恢复；
 - 商店「检查更新」有缓存，必须靠**详情页**触发新元数据；
@@ -258,11 +301,14 @@ python win_sideload.py --apk "C:\path\app.apk"
 
 ## 安全与合规
 
-- 本项目用于**自有车辆**的安装/研究测试；请勿用于他人车辆或规避付费/授权；
-- 安装的 APK 由使用者自行负责来源与合法性；仓库不附带任何第三方 APK（`artifacts/` 仅本机测试用，不随发布包分发）；
+> **本项目仅限自有车辆的研究与自用，严禁用于任何商业用途**：不得收费代装、不得作为付费服务、不得随产品捆绑、不得用于付费培训或咨询，以及任何形式的变现。
+
+- 仅用于**你名下的车辆**；请勿用于他人车辆，或用于规避付费与授权；
+- **质保风险自行辨别、自行承担**：向车机安装非官方应用可能被厂商 / 4S 店认定为影响质保，进而拒绝保修或拒赔；是否操作、能否接受，请自行判断，相关后果由使用者自行承担；
+- 安装的 APK 由使用者自行负责来源与合法性；仓库与发布包均不附带任何第三方 APK；
 - 工具不收集、不上传任何数据，所有日志只落在本机 `logs/`；
-- 使用前请确认当地法律法规与车辆保修条款。
-- ** 本项目仅做技术探讨，不得用于盈利用途，所产生的法律风险自担 **
+- 使用前请确认当地法律法规与车辆保修条款；因使用本项目产生的一切法律与财产风险由使用者自行承担；
+- 本项目仅做技术探讨，代码未经第三方安全审计，不提供任何形式的担保，**不得用于盈利用途**。
 
 ## 文件结构
 
@@ -279,6 +325,8 @@ zeeload/
 │   ├── check-environment.sh      环境自检
 │   └── inspect-pf.sh             只读导出 pf 规则（排障用）
 ├── addons/zeekr_log.py           mitmproxy 插件（注入 / 替换 / 记录）
+├── gui/zeeload_gui.py            macOS 图形界面（Tkinter）
+├── tools/repack-sign.sh          改包名 + 重签名辅助脚本（研究用，二进制依赖不入库）
 ├── windows/                      Windows 版（WinDivert + SNI 分流 + 图形界面）
 ├── assets/                       Logo 与宣传图（svg / png / icns / ico）
 ├── docs/
@@ -291,6 +339,17 @@ zeeload/
 ```
 
 ## 版本
+
+### v1.0.2（2026-11-03）
+
+macOS 图形界面与改包名研究工具：
+
+- **macOS 图形界面** `gui/zeeload_gui.py`：四阶段进度、APK 拖入解析、拦截范围与注入目标可选、高级选项
+- **APK 解析改用 `aapt`**：读出权威包名 / 应用名 / 原生架构，替代原来的二进制 manifest 启发式猜测（旧逻辑会把主题资源名 `Theme.Emui.Translucent` 误判为包名）
+- **修复 appList 注入崩溃**：`addons/zeekr_log.py` 的 `_inject_update` 兼容 `data` 直接为数组（list）的情况，不再抛 `'list' object has no attribute 'get'`
+- **扩充车机探测关键词**：`check-environment.sh` / `transparent-test.sh` 加入 `sa8155/sa515m/qcm/sm6350` 等；ping 无响应改为正常提示（车机通常屏蔽 ICMP）
+- **改包名工具** `tools/repack-sign.sh`：反编译 → 改包名 → 同步 namespace → 重打包 → zipalign + apksigner（v1+v2+v3），规避 `jarsigner` 只签 v1 导致 targetSdk≥30 应用「安装失败」的问题
+- 明确结论：改包名无法绕过「仅支持上架应用」白名单（见[已知限制](#已知限制)）
 
 ### v1.0.1（2026-10-31）
 

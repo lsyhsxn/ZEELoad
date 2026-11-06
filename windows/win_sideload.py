@@ -533,13 +533,22 @@ def run_divert(hotspot_ip: str, block_quic: bool = True) -> None:
         log("      → 都没有问题的话，点界面上的「抓包诊断」，看车机到底有没有包经过这台机器。")
 
     def _delivery_check() -> None:
+        # 车机可能重传 SYN、也可能先试别的地址再换一个连接，所以不能只等几秒就喊失败
+        # （实测：第一个包改写后 12 秒，分流器才收到连接，链路其实是通的）。
         while stats["rewritten"] == 0 and not stats["inject_fail"]:
             time.sleep(0.5)
-        time.sleep(6)
-        if stats["rewritten"] and shim.hits == 0:
-            log("警告：改写后的包没有送到分流器 —— 6 秒内 18081 一个连接都没收到。")
-            log(f"      → 注入层=NETWORK、方向=INBOUND、接口索引={hot_ifidx}；")
-            log("      → 把这段日志发出来，这基本就是内核没接受注入包的证据。")
+        time.sleep(10)
+        if shim.hits:
+            return
+        log(f"提示：已改写 {stats['rewritten']} 个车机包，但还没收到车机连上分流器。")
+        log("      （车机通常会重传或换连接，再等十几秒看看；下面还有一次确认。）")
+        time.sleep(20)
+        if shim.hits:
+            log("      → 已收到分流器连接，链路正常。")
+            return
+        log("警告：改写 30 秒后，分流器仍然没收到任何车机连接。")
+        log(f"      → 注入层=NETWORK、方向=INBOUND、接口索引={hot_ifidx}；")
+        log("      → 把这段日志发出来，这基本就是内核没接受注入包的证据。")
 
     def _stats_loop() -> None:
         last = (0, 0, 0, 0)
